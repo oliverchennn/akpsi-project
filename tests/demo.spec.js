@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 const ids = ["coffee", "rice", "oats", "sugar"];
 test.beforeEach(async ({ page }) => {
+  await page.clock.install();
   await page.goto("/");
 });
 for (const width of [390, 1512]) {
@@ -8,6 +9,7 @@ for (const width of [390, 1512]) {
     await page.setViewportSize({ width, height: 844 });
     await page.getByRole("switch").check();
     await page.getByRole("button", { name: "Busy afternoon" }).click();
+    await page.clock.runFor(15000);
     const requests = page.getByRole("link", { name: "Demo requests", exact: true });
     await requests.click();
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Demo requests");
@@ -16,7 +18,7 @@ for (const width of [390, 1512]) {
     await expect(page.locator(".platform-section")).toBeHidden();
     await expect(page.locator("#activity")).toBeHidden();
     await expect(page.locator("#requests")).toBeInViewport();
-    await expect(page.locator(".request-row")).toHaveCount(2);
+    await expect(page.locator(".request-row")).toHaveCount(4);
     await requests.click();
     await expect(page.locator("#requests")).toBeInViewport();
     await page.getByRole("link", { name: "Activity", exact: true }).click();
@@ -24,12 +26,12 @@ for (const width of [390, 1512]) {
     await expect(page.locator("#requests")).toBeHidden();
     await page.goBack();
     await expect(requests).toHaveAttribute("aria-current", "page");
-    await expect(page.locator(".request-row")).toHaveCount(2);
+    await expect(page.locator(".request-row")).toHaveCount(4);
     await page.goForward();
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Store activity");
     await page.getByRole("link", { name: "Overview 4", exact: true }).click();
     await expect(page.getByRole("slider")).toHaveCount(4);
-    await expect(page.locator("#low-count")).toHaveText("02 low-stock bins");
+    await expect(page.locator("#low-count")).toHaveText("04 low-stock bins");
     await page.goto("/#requests");
     await expect(requests).toHaveAttribute("aria-current", "page");
     await expect(page.locator("#requests")).toBeInViewport();
@@ -128,25 +130,28 @@ test("numeric bounds, tare floor, plus/minus and save configuration", async ({
     "In stock",
   );
 });
-test("one alert per crossing, no repeated preset or refill spam, requests only simulated", async ({
+test("live consumption, approval and delivery preserve stock and avoid duplicates", async ({
   page,
 }) => {
-  await page.getByRole("switch").check();
   await page.getByRole("button", { name: "Busy afternoon" }).click();
-  await expect(page.locator("#low-count")).toHaveText("02 low-stock bins");
-  await expect(page.locator(".request-row")).toHaveCount(2);
-  await expect(page.locator(".activity-row[data-type=alert]")).toHaveCount(2);
-  await page.getByRole("button", { name: "Busy afternoon" }).click();
-  await expect(page.locator(".request-row")).toHaveCount(2);
-  await expect(page.locator(".activity-row[data-type=alert]")).toHaveCount(2);
-  await page.locator("#gross-coffee").fill("1");
-  await page.locator("#gross-coffee").press("Enter");
-  await expect(page.locator(".activity-row[data-type=alert]")).toHaveCount(2);
-  await page.locator("#card-coffee .refill-button").click();
-  await expect(page.locator("#card-coffee .stock-badge")).toHaveText(
-    "In stock",
-  );
+  await expect(page.getByRole("switch")).toBeChecked();
+  await page.clock.runFor(5000);
+  await expect(page.locator("#card-coffee .dial-main")).toHaveText("4.80");
+  await page.getByRole("button", { name: "Pause", exact: true }).click();
+  await page.clock.runFor(5000);
+  await expect(page.locator("#card-coffee .dial-main")).toHaveText("4.80");
+  await page.getByRole("button", { name: "Resume", exact: true }).click();
+  await page.clock.runFor(10000);
+  await expect(page.locator("#low-count")).toHaveText("04 low-stock bins");
+  await expect(page.locator(".request-row")).toHaveCount(4);
+  await page.getByRole("link", { name: "Demo requests", exact: true }).click();
+  await page.getByRole("button", { name: "Approve Coffee beans request", exact: true }).click();
+  await expect(page.locator(".request-state.approved")).toHaveCount(1);
+  await expect(page.locator("#card-coffee .dial-main")).toHaveText("0.00");
+  await page.getByRole("button", { name: "Simulate delivery for Coffee beans", exact: true }).click();
   await expect(page.locator(".request-state.fulfilled")).toHaveCount(1);
+  await expect(page.locator("#card-coffee .dial-main")).toHaveText("10.00");
+  await page.getByRole("link", { name: "Overview 4", exact: true }).click();
   const feed = await page.locator("#activity-list").innerText();
   await page.locator("#card-coffee .refill-button").click();
   expect(await page.locator("#activity-list").innerText()).toBe(feed);
@@ -156,6 +161,22 @@ test("one alert per crossing, no repeated preset or refill spam, requests only s
   await expect(page.locator(".request-row")).toHaveCount(0);
   await expect(page.getByRole("switch")).not.toBeChecked();
   await expect(page.locator("#total-net")).toHaveText("31.00 kg");
+  await page.clock.runFor(20000);
+  await expect(page.locator("#total-net")).toHaveText("31.00 kg");
+});
+
+test("run time can change during consumption without jumping the inventory", async ({ page }) => {
+  await page.getByLabel("Run time", { exact: true }).selectOption("30");
+  await page.getByRole("button", { name: "Busy afternoon" }).click();
+  await page.clock.runFor(15000);
+  await expect(page.locator("#card-coffee .dial-main")).toHaveText("3.60");
+  await page.getByLabel("Run time", { exact: true }).selectOption("60");
+  await expect(page.locator("#card-coffee .dial-main")).toHaveText("3.60");
+  await page.clock.runFor(15000);
+  await expect(page.locator("#card-coffee .dial-main")).toHaveText("1.80");
+  await page.getByRole("button", { name: "Refill all", exact: true }).click();
+  await page.clock.runFor(60000);
+  await expect(page.locator("#card-coffee .dial-main")).toHaveText("10.00");
 });
 test("configuration validates threshold and updates live stock state on save", async ({
   page,
@@ -235,6 +256,7 @@ test("AA accessibility checks pass for stocked, low-stock, settings and mobile s
   await check();
   await page.getByRole("switch").check();
   await page.getByRole("button", { name: "Busy afternoon" }).click();
+  await page.clock.runFor(15000);
   await check();
   await page.getByRole("button", { name: "Configure Coffee beans" }).click();
   await check();
