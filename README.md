@@ -4,6 +4,7 @@ A grocery inventory dashboard with four independent virtual weighing platforms. 
 
 ## Try it
 
+- Use **Overview**, **Activity**, and **Demo requests** in the sidebar to switch views without losing your current demo data. The selected link and breadcrumb follow the view; direct links and browser Back/Forward also work.
 - Drag any circular gross-weight dial, use the adjacent number field, or use + / −.
 - On a focused dial, arrow keys change gross weight by 0.1 kg; Page Up/Down changes it by 1 kg; Home/End selects its bounds.
 - Net inventory is `max(gross weight − saved empty-bin tare, 0)`. Gross weight is bounded by zero and tare plus net capacity.
