@@ -20,6 +20,9 @@
 * {
   box-sizing: border-box;
 }
+[hidden] {
+  display: none !important;
+}
 body {
   margin: 0;
   font-size: 16px;
@@ -802,6 +805,9 @@ h2 {
   display: grid;
   grid-template-columns: 1.2fr 1fr;
   gap: 18px;
+}
+.lower-grid.single-panel {
+  grid-template-columns: 1fr;
 }
 .panel {
   background: var(--paper);

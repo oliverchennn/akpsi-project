@@ -3,6 +3,39 @@ const ids = ["coffee", "rice", "oats", "sugar"];
 test.beforeEach(async ({ page }) => {
   await page.goto("/");
 });
+for (const width of [390, 1512]) {
+  test(`sidebar switches views and preserves requests at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 844 });
+    await page.getByRole("switch").check();
+    await page.getByRole("button", { name: "Busy afternoon" }).click();
+    const requests = page.getByRole("link", { name: "Demo requests", exact: true });
+    await requests.click();
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Demo requests");
+    await expect(requests).toHaveAttribute("aria-current", "page");
+    await expect(page.locator(".breadcrumb strong")).toHaveText("Demo requests");
+    await expect(page.locator(".platform-section")).toBeHidden();
+    await expect(page.locator("#activity")).toBeHidden();
+    await expect(page.locator("#requests")).toBeInViewport();
+    await expect(page.locator(".request-row")).toHaveCount(2);
+    await requests.click();
+    await expect(page.locator("#requests")).toBeInViewport();
+    await page.getByRole("link", { name: "Activity", exact: true }).click();
+    await expect(page.locator("#activity")).toBeVisible();
+    await expect(page.locator("#requests")).toBeHidden();
+    await page.goBack();
+    await expect(requests).toHaveAttribute("aria-current", "page");
+    await expect(page.locator(".request-row")).toHaveCount(2);
+    await page.goForward();
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Store activity");
+    await page.getByRole("link", { name: "Overview 4", exact: true }).click();
+    await expect(page.getByRole("slider")).toHaveCount(4);
+    await expect(page.locator("#low-count")).toHaveText("02 low-stock bins");
+    await page.goto("/#requests");
+    await expect(requests).toHaveAttribute("aria-current", "page");
+    await expect(page.locator("#requests")).toBeInViewport();
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Demo requests");
+  });
+}
 test("loads four complete platforms without console errors", async ({
   page,
 }) => {

@@ -13,6 +13,64 @@ let state = initialState();
 let selectedId;
 let announcedSequence = 0;
 const $ = (selector) => document.querySelector(selector);
+const views = {
+  main: {
+    label: "Overview",
+    title: "Inventory overview",
+    description: "Four bins. One clear view of what’s left.",
+  },
+  activity: {
+    label: "Activity",
+    title: "Store activity",
+    description: "Follow low-stock alerts, refills, and changes in this session.",
+  },
+  requests: {
+    label: "Demo requests",
+    title: "Demo requests",
+    description: "Review simulated restocking requests for your store.",
+  },
+};
+let currentView = "main";
+
+function showView({ focus = false } = {}) {
+  const requested = window.location.hash.slice(1);
+  currentView = Object.hasOwn(views, requested) ? requested : "main";
+  const view = views[currentView];
+  const overview = currentView === "main";
+  $(".stats").hidden = !overview;
+  $(".platform-section").hidden = !overview;
+  $("#activity").hidden = currentView === "requests";
+  $("#requests").hidden = currentView === "activity";
+  $(".lower-grid").classList.toggle("single-panel", !overview);
+  $(".breadcrumb strong").textContent = view.label;
+  const heading = $(".page-heading h1");
+  heading.textContent = view.title;
+  $(".page-heading > div > p:last-child").textContent = view.description;
+  document.querySelectorAll(".nav-item").forEach((link) => {
+    const active = link.getAttribute("href") === `#${currentView}`;
+    link.classList.toggle("active", active);
+    if (active) link.setAttribute("aria-current", "page");
+    else link.removeAttribute("aria-current");
+  });
+  render();
+  if (focus) heading.focus({ preventScroll: true });
+  window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+}
+
+document.querySelectorAll(".nav-item, .brand, .skip-link").forEach((link) => {
+  link.addEventListener("click", (event) => {
+    if (
+      event.button !== 0 || event.metaKey || event.ctrlKey ||
+      event.shiftKey || event.altKey
+    ) return;
+    event.preventDefault();
+    const hash = link.getAttribute("href");
+    if (window.location.hash !== hash) window.history.pushState(null, "", hash);
+    showView({ focus: true });
+  });
+});
+window.addEventListener("popstate", () => showView({ focus: true }));
+window.addEventListener("hashchange", () => showView());
 const escape = (text) =>
   String(text).replace(
     /[&<>"']/g,
@@ -220,7 +278,7 @@ function render() {
   }
   $("#activity-list").innerHTML =
     state.activity
-      .slice(0, 5)
+      .slice(0, currentView === "activity" ? state.activity.length : 5)
       .map(
         (entry) =>
           `<div class="activity-row ${entry.type}" data-type="${entry.type}"><span class="activity-symbol">${icon({ alert: "bell", request: "cart", refill: "refill", settings: "settings", start: "scale" }[entry.type] || "check")}</span><div class="activity-copy"><strong>${escape(entry.title)}</strong><p>${escape(entry.detail)}</p></div><time datetime="${new Date(entry.time).toISOString()}">${new Intl.DateTimeFormat("en", { hour: "2-digit", minute: "2-digit", hour12: false }).format(entry.time)}</time></div>`,
@@ -231,7 +289,7 @@ function render() {
       : "");
   $("#request-list").innerHTML = state.requests.length
     ? state.requests
-        .slice(0, 4)
+        .slice(0, currentView === "requests" ? state.requests.length : 4)
         .map(
           (request) =>
             `<div class="request-row"><div><strong>${escape(request.name)}</strong><p>DEMO #${String(request.id).padStart(3, "0")} · ${fmt(request.amount)} kg top-up</p></div><span class="request-state ${request.status}">${request.status === "pending" ? "Pending demo" : "Refill simulated"}</span></div>`,
@@ -364,4 +422,4 @@ document.querySelectorAll("dialog").forEach((dialog) =>
 );
 hydrateIcons();
 buildCards();
-render();
+showView();
