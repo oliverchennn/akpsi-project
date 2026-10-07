@@ -8,10 +8,20 @@ import {
   preset,
   round,
   clamp,
+  setAfternoonDuration,
+  setAutoReorder,
+  approveRequest,
+  deliverRequest,
+  startAfternoon,
+  pauseAfternoon,
+  advanceAfternoon,
+  resetSimulation,
 } from "./inventory.js";
 let state = initialState();
 let selectedId;
 let announcedSequence = 0;
+let simulationTimer = null;
+let renderedRequestKey = "";
 const $ = (selector) => document.querySelector(selector);
 const views = {
   main: {
@@ -211,6 +221,18 @@ function buildCards() {
   });
 }
 function render() {
+  const sim = state.simulation;
+  $("#simulation-bar").hidden = !sim.started;
+  $("#simulation-title").textContent = sim.running
+    ? `Live afternoon · ${sim.elapsed.toFixed(1)} / ${sim.duration}s`
+    : sim.elapsed >= sim.duration ? "Afternoon complete" : "Afternoon paused";
+  $("#simulation-detail").textContent = sim.elapsed >= sim.duration
+    ? "Review your requests, approve them, then simulate delivery."
+    : `Starting stock is consumed over ${sim.duration} seconds. Demo only.`;
+  $("#pause-afternoon").textContent = sim.running ? "Pause" : "Resume";
+  $("#pause-afternoon").hidden = sim.elapsed >= sim.duration;
+  $("#afternoon-duration").value = String(sim.duration);
+  $("#preset-busy").disabled = sim.running;
   const low = state.items.filter(isLow).length;
   $("#total-net").innerHTML =
     `${fmt(state.items.reduce((sum, item) => sum + net(item), 0))} <small>kg</small>`;
@@ -287,15 +309,24 @@ function render() {
     (state.activity.length === 1
       ? '<p class="activity-empty-note"><strong>Make a little change. See it here.</strong><br>Low-stock crossings, refills, and saved settings appear as you explore.</p>'
       : "");
-  $("#request-list").innerHTML = state.requests.length
-    ? state.requests
-        .slice(0, currentView === "requests" ? state.requests.length : 4)
+  const visibleRequests = state.requests.slice(0, currentView === "requests" ? state.requests.length : 4);
+  const requestKey = JSON.stringify({ rows: visibleRequests.map(({ id, name, status }) => ({ id, name, status })), enabled: state.autoReorder });
+  if (requestKey !== renderedRequestKey) {
+    const focusedRequest = document.activeElement?.closest("#request-list button")?.dataset.requestId;
+    $("#request-list").innerHTML = visibleRequests.length
+    ? visibleRequests
         .map(
           (request) =>
-            `<div class="request-row"><div><strong>${escape(request.name)}</strong><p>DEMO #${String(request.id).padStart(3, "0")} · ${fmt(request.amount)} kg top-up</p></div><span class="request-state ${request.status}">${request.status === "pending" ? "Pending demo" : "Refill simulated"}</span></div>`,
+            `<div class="request-row"><div><strong>${escape(request.name)}</strong><p>DEMO #${String(request.id).padStart(3, "0")} · <span class="request-amount" data-request-id="${request.id}"></span> kg top-up</p></div><div class="request-actions"><span class="request-state ${request.status}">${{ pending: "Needs approval", approved: "Approved", fulfilled: "Refill simulated" }[request.status]}</span>${request.status === "pending" ? `<button class="button small primary" data-action="approve" data-request-id="${request.id}" aria-label="Approve ${escape(request.name)} request">Approve</button>` : request.status === "approved" ? `<button class="button small" data-action="deliver" data-request-id="${request.id}" aria-label="Simulate delivery for ${escape(request.name)}">Simulate delivery</button>` : ""}</div></div>`,
         )
         .join("")
-    : `<div class="request-empty">${icon("cart")}<span>No demo requests yet. ${state.autoReorder ? "Try the busy afternoon scenario." : "Switch on to explore."}</span></div>`;
+    : `<div class="request-empty">${icon("cart")}<span>No demo requests yet. ${state.autoReorder ? "Start Busy afternoon in Overview." : "Switch on or start Busy afternoon in Overview."}</span></div>`;
+    renderedRequestKey = requestKey;
+    if (focusedRequest) $("#request-list").querySelector(`button[data-request-id="${focusedRequest}"]`)?.focus({ preventScroll: true });
+  }
+  visibleRequests.forEach((request) => {
+    $("#request-list").querySelector(`.request-amount[data-request-id="${request.id}"]`).textContent = fmt(request.amount);
+  });
   $("#auto-reorder").checked = state.autoReorder;
   if (state.sequence !== announcedSequence) {
     const newEntries = state.activity.filter(
@@ -380,20 +411,59 @@ $("#settings-form").addEventListener("submit", (event) => {
   render();
 });
 $("#auto-reorder").addEventListener("change", (event) => {
-  state.autoReorder = event.target.checked;
+  setAutoReorder(state, event.target.checked);
   render();
   $("#announcement").textContent =
-    `Simulated auto-reorder ${state.autoReorder ? "enabled for future low-stock crossings" : "disabled"}.`;
+    `Simulated auto-reorder ${state.autoReorder ? "enabled. Low-stock bins have requests ready for approval" : "disabled"}.`;
 });
+function stopSimulationTimer() {
+  if (simulationTimer !== null) clearInterval(simulationTimer);
+  simulationTimer = null;
+}
+function runSimulationTimer() {
+  stopSimulationTimer();
+  simulationTimer = setInterval(() => {
+    if (document.hidden) return;
+    advanceAfternoon(state);
+    render();
+    if (!state.simulation.running) stopSimulationTimer();
+  }, 250);
+}
 $("#preset-busy").addEventListener("click", () => {
-  preset(state, "busy");
+  startAfternoon(state);
+  runSimulationTimer();
+  render();
+});
+$("#afternoon-duration").addEventListener("change", (event) => {
+  setAfternoonDuration(state, event.target.value);
+  render();
+  $("#announcement").textContent = `Afternoon duration set to ${state.simulation.duration} seconds. Stock already used is unchanged.`;
+});
+$("#pause-afternoon").addEventListener("click", () => {
+  if (state.simulation.running) {
+    pauseAfternoon(state);
+    stopSimulationTimer();
+  } else {
+    startAfternoon(state);
+    runSimulationTimer();
+  }
+  render();
+});
+$("#request-list").addEventListener("click", (event) => {
+  const button = event.target.closest("button[data-request-id]");
+  if (!button) return;
+  if (button.dataset.action === "approve") approveRequest(state, button.dataset.requestId);
+  if (button.dataset.action === "deliver") deliverRequest(state, button.dataset.requestId);
   render();
 });
 $("#refill-all").addEventListener("click", () => {
+  stopSimulationTimer();
+  resetSimulation(state);
   preset(state, "stocked");
   render();
 });
 $("#reset").addEventListener("click", () => {
+  stopSimulationTimer();
   state = initialState();
   announcedSequence = 0;
   buildCards();

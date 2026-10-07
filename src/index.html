@@ -72,6 +72,10 @@
             <span data-icon="reset"></span>Reset demo
           </button>
         </div>
+        <div class="simulation-bar" id="simulation-bar" hidden>
+          <div><strong id="simulation-title">Busy afternoon</strong><span id="simulation-detail"></span></div>
+          <button class="button small" id="pause-afternoon">Pause</button>
+        </div>
         <section class="stats" aria-label="Inventory summary">
           <div class="stat">
             <span class="stat-icon" data-icon="scale"></span>
@@ -113,8 +117,17 @@
               </p>
             </div>
             <div class="presets" aria-label="Presentation presets">
-              <span>Try a scenario</span
-              ><button class="button small" id="preset-busy">
+              <div class="duration-control"><label for="afternoon-duration">Run time</label>
+                <select id="afternoon-duration">
+                  <option value="15">15 seconds</option>
+                  <option value="30">30 seconds</option>
+                  <option value="45">45 seconds</option>
+                  <option value="60">1 minute</option>
+                  <option value="90">1.5 minutes</option>
+                  <option value="120">2 minutes</option>
+                </select>
+              </div>
+              <button class="button small" id="preset-busy">
                 <span data-icon="trend"></span>Busy afternoon</button
               ><button class="button small" id="refill-all">
                 <span data-icon="refill"></span>Refill all
@@ -153,18 +166,19 @@
               <span class="demo-tag">DEMO</span>
             </div>
             <p class="panel-description">
-              Turn a low-stock alert into a simulated purchasing request.
+              Low stock → approve a request → simulate its delivery.
             </p>
             <label class="switch-row"
               ><span
                 ><strong>Simulate auto-reorder</strong
-                ><small>Applies to future low-stock crossings</small></span
+                ><small>Creates requests for low-stock bins</small></span
               ><input type="checkbox" id="auto-reorder" role="switch" /><span
                 class="switch"
                 aria-hidden="true"
               ></span
             ></label>
             <div id="request-list"></div>
+            <p class="delivery-note">Approval holds the requested quantity. Stock may keep falling until you simulate delivery.</p>
             <p class="request-disclaimer">
               <span data-icon="shield"></span>Demo requests only. No orders,
               emails, or supplier connections.
@@ -278,12 +292,13 @@
           per crossing.
         </li>
         <li>
-          <strong>Try a busy afternoon.</strong> The preset lowers stock in two
-          bins. Switch on simulated auto-reorder first to create demo requests.
+          <strong>Try a busy afternoon.</strong> Choose a run time from 15 seconds to 2 minutes.
+          Starting stock drops gradually and demo requests turn on automatically.
+          Change the pace at any time, or pause and resume from any view.
         </li>
         <li>
-          <strong>Refill and repeat.</strong> Simulate a refill to clear the low
-          state, or reset the demo to start fresh.
+          <strong>Approve, then deliver.</strong> In Demo requests, approve a top-up,
+          then simulate delivery to add that quantity. Refill all or Reset demo stops the simulation.
         </li>
       </ol>
       <p class="help-note">
