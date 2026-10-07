@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#146A61">
+  <title>tarely — Digital inventory demo</title>
+  <meta name="description" content="Know before you run low. Explore four virtual weighing platforms in Tarely’s interactive grocery inventory demo. All readings and actions are simulated.">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to inventory</a>
+  <aside class="sidebar">
+    <a class="brand" href="#main" aria-label="Tarely inventory home">tarely<span class="brand-dot">.</span></a>
+    <div class="store-card"><span class="store-symbol" aria-hidden="true">M</span><div><strong>Meadow Market</strong><span>Sample grocery store</span></div></div>
+    <p class="nav-label">WORKSPACE</p>
+    <nav aria-label="Workspace">
+      <a class="nav-item active" href="#main"><span data-icon="grid"></span>Overview<span class="nav-count">4</span></a>
+      <a class="nav-item" href="#activity"><span data-icon="activity"></span>Activity</a>
+      <a class="nav-item" href="#requests"><span data-icon="cart"></span>Demo requests</a>
+    </nav>
+    <div class="sidebar-bottom"><span class="small-leaf" data-icon="leaf"></span><p>Know before<br>you run low.</p><span>Less guesswork. More in stock.</span><div class="sidebar-foot">INTERACTIVE DEMO <span>v1.0</span></div></div>
+  </aside>
+  <div class="workspace">
+    <header class="topbar"><div class="breadcrumb">Workspace <span>/</span> <strong>Overview</strong></div><div class="top-actions"><span class="simulation-label"><span></span>Simulation mode</span><button class="icon-button" id="help" aria-label="How this demo works" data-icon="help"></button><span class="avatar" aria-label="Meadow Market demo">MM</span></div></header>
+    <main id="main" tabindex="-1">
+      <div class="page-heading"><div><p class="eyebrow">A LITTLE CLARITY FOR EVERY AISLE</p><h1>Inventory overview</h1><p>Four bins. One clear view of what’s left.</p></div><button class="button quiet" id="reset"><span data-icon="reset"></span>Reset demo</button></div>
+      <section class="stats" aria-label="Inventory summary">
+        <div class="stat"><span class="stat-icon" data-icon="scale"></span><div><p>Virtual platforms</p><strong>04 <small>simulated</small></strong></div></div>
+        <div class="stat"><span class="stat-icon" data-icon="box"></span><div><p>Total net inventory</p><strong id="total-net">31.00 <small>kg</small></strong></div></div>
+        <div class="stat"><span class="stat-icon" data-icon="check"></span><div><p>Healthy stock</p><strong id="healthy-count">04 <small>of 4 bins</small></strong></div></div>
+        <div class="stat attention"><span class="stat-icon" data-icon="bell"></span><div><p>Needs attention</p><strong id="low-count">00 <small>low-stock bins</small></strong></div></div>
+      </section>
+      <section aria-labelledby="platform-title" class="platform-section">
+        <div class="section-heading"><div><h2 id="platform-title">Your weighing platforms <span class="count-badge">4</span></h2><p>Drag a dial or enter a gross weight to see inventory respond.</p></div><div class="presets" aria-label="Presentation presets"><span>Try a scenario</span><button class="button small" id="preset-busy"><span data-icon="trend"></span>Busy afternoon</button><button class="button small" id="refill-all"><span data-icon="refill"></span>Refill all</button></div></div>
+        <div class="platforms" id="platforms"></div>
+        <div class="formula-note"><span data-icon="info"></span><span><strong>A simple idea, made visible.</strong> Gross weight − empty-bin tare = net inventory. Negative results are shown as zero.</span><span class="units-note">All weights in kg</span></div>
+      </section>
+      <div class="lower-grid">
+        <section class="panel activity-panel" id="activity" aria-labelledby="activity-title"><div class="panel-heading"><h2 id="activity-title">Store activity</h2><span class="muted-label">This session</span></div><div id="activity-list"></div></section>
+        <section class="panel requests-panel" id="requests" aria-labelledby="requests-title"><div class="panel-heading"><h2 id="requests-title">A head start on restocking</h2><span class="demo-tag">DEMO</span></div><p class="panel-description">Turn a low-stock alert into a simulated purchasing request.</p><label class="switch-row"><span><strong>Simulate auto-reorder</strong><small>Applies to future low-stock crossings</small></span><input type="checkbox" id="auto-reorder" role="switch"><span class="switch" aria-hidden="true"></span></label><div id="request-list"></div><p class="request-disclaimer"><span data-icon="shield"></span>Demo requests only. No orders, emails, or supplier connections.</p></section>
+      </div>
+      <footer><span><strong>tarely</strong> · Know before you run low.</span><span>Sample data · Fully digital · No hardware required</span></footer>
+    </main>
+  </div>
+  <div class="sr-only" role="status" aria-live="polite" id="announcement"></div>
+  <dialog id="settings-dialog" aria-labelledby="settings-title"><form id="settings-form"><div class="dialog-heading"><div><p class="eyebrow" id="settings-platform"></p><h2 id="settings-title">Bin settings</h2></div><button type="button" class="icon-button close-dialog" aria-label="Close settings" data-icon="close"></button></div><p class="dialog-description">Save the empty-bin weight once. Tarely subtracts it from every simulated reading.</p><label class="field">Item name<input name="name" required maxlength="40"></label><div class="form-grid"><label class="field">Empty-bin tare <span>kg</span><input name="tare" type="number" min="0" max="20" step="0.01" required></label><label class="field">Net capacity <span>kg</span><input name="capacity" type="number" min="1" max="100" step="0.01" required></label><label class="field">Low-stock threshold <span>kg</span><input name="threshold" type="number" min="0" step="0.01" required></label><label class="field">Monthly stock weight <span>kg</span><input name="monthly" type="number" min="0" max="1000" step="0.01" required></label></div><p class="field-note">Monthly stock is a reference amount you set, not a consumption rate or a forecast.</p><p class="form-error" id="form-error" role="alert"></p><div class="dialog-actions"><button class="button close-dialog" type="button">Cancel</button><button class="button primary" type="submit">Save settings</button></div></form></dialog>
+  <dialog id="help-dialog" aria-labelledby="help-title"><div class="dialog-heading"><h2 id="help-title">Meet your virtual stockroom</h2><button class="icon-button close-dialog" aria-label="Close help" data-icon="close"></button></div><p class="dialog-description">Explore Tarely’s grocery inventory concept with four independent, simulated weighing platforms.</p><ol class="help-steps"><li><strong>Adjust the weight.</strong> Drag a circular dial, use its arrow keys (0.1 kg), Page Up/Down (1 kg), Home/End, or enter a gross weight.</li><li><strong>Watch the inventory.</strong> The saved empty-bin tare is subtracted. Net weight at or below your threshold creates one alert per crossing.</li><li><strong>Try a busy afternoon.</strong> The preset lowers stock in two bins. Switch on simulated auto-reorder first to create demo requests.</li><li><strong>Refill and repeat.</strong> Simulate a refill to clear the low state, or reset the demo to start fresh.</li></ol><p class="help-note">Everything here is a simulation. This demo does not measure hardware accuracy or predict future stock. Changes stay in this tab and reset when you reload.</p><button class="button primary close-dialog">Got it</button></dialog>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>
